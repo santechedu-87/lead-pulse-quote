@@ -22,6 +22,11 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  // User Profile State (Stored locally)
+  const [userName, setUserName] = useState(() => localStorage.getItem('quotient_user_name') || 'Sanajit Dey');
+  const [userEmail, setUserEmail] = useState(() => localStorage.getItem('quotient_user_email') || 'sancares87@gmail.com');
+  const [profileSavedToast, setProfileSavedToast] = useState(false);
+
   const [clients, setClients] = useState(() => {
     const saved = localStorage.getItem('quotient_clients');
     return saved ? JSON.parse(saved) : INITIAL_CLIENTS;
@@ -37,29 +42,31 @@ export default function App() {
     return saved ? JSON.parse(saved) : INITIAL_QUOTES;
   });
 
-  // New Client Form State
+  // Modal States
   const [showAddClientModal, setShowAddClientModal] = useState(false);
   const [newClientName, setNewClientName] = useState('');
   const [newClientEmail, setNewClientEmail] = useState('');
   const [newClientPhone, setNewClientPhone] = useState('');
   const [newClientType, setNewClientType] = useState('Deal');
 
-  // New Lead Form State
   const [showAddLeadModal, setShowAddLeadModal] = useState(false);
   const [leadTitle, setLeadTitle] = useState('');
   const [leadCompany, setLeadCompany] = useState('');
   const [leadValue, setLeadValue] = useState('');
   const [leadStage, setLeadStage] = useState('New');
 
-  // Quote Form State
   const [newQuoteClient, setNewQuoteClient] = useState('');
   const [newQuoteEmail, setNewQuoteEmail] = useState('');
   const [newQuoteAmount, setNewQuoteAmount] = useState('');
   const [isRetainer, setIsRetainer] = useState(true);
 
-  // Send Quote Modal
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [activeQuoteModal, setActiveQuoteModal] = useState(null);
+
+  useEffect(() => {
+    localStorage.setItem('quotient_user_name', userName);
+    localStorage.setItem('quotient_user_email', userEmail);
+  }, [userName, userEmail]);
 
   useEffect(() => {
     localStorage.setItem('quotient_clients', JSON.stringify(clients));
@@ -74,6 +81,14 @@ export default function App() {
   }, [quotes]);
 
   const totalValue = leads.reduce((sum, l) => l.stage !== 'Lost' ? sum + Number(l.value) : sum, 0);
+
+  const handleSaveProfile = (e) => {
+    e.preventDefault();
+    localStorage.setItem('quotient_user_name', userName);
+    localStorage.setItem('quotient_user_email', userEmail);
+    setProfileSavedToast(true);
+    setTimeout(() => setProfileSavedToast(false), 3000);
+  };
 
   const handleAddClient = (e) => {
     e.preventDefault();
@@ -113,7 +128,6 @@ export default function App() {
     };
     setLeads([lead, ...leads]);
 
-    // Ensure company exists in client list
     if (!clients.some(c => c.name.toLowerCase() === leadCompany.toLowerCase())) {
       setClients(prev => [{
         id: `c_${Date.now()}`,
@@ -146,7 +160,6 @@ export default function App() {
     };
     setQuotes([item, ...quotes]);
 
-    // Auto-create client if not already present
     if (!clients.some(c => c.name.toLowerCase() === newQuoteClient.toLowerCase())) {
       setClients(prev => [{
         id: `c_${Date.now()}`,
@@ -158,7 +171,6 @@ export default function App() {
       }, ...prev]);
     }
 
-    // Auto-add opportunity to pipeline under "Proposal Sent"
     setLeads(prev => [{
       id: `lead_${Date.now()}`,
       title: `${newQuoteClient} ${isRetainer ? 'Retainer' : 'Contract'}`,
@@ -184,6 +196,8 @@ export default function App() {
     setQuotes(quotes.map(q => q.id === activeQuoteModal.id ? { ...q, status: 'Sent' } : q));
     setShowEmailModal(false);
   };
+
+  const userInitial = userName.trim() ? userName.trim().charAt(0).toUpperCase() : 'U';
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[#080c14] text-slate-100">
@@ -241,33 +255,40 @@ export default function App() {
           </nav>
         </div>
 
-        <div className="pt-4 border-t border-slate-800/80 flex items-center gap-3 px-2">
-          <div className="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center text-xs font-bold text-white ring-2 ring-emerald-500/20">E</div>
+        {/* Dynamic User Profile Footer */}
+        <div 
+          onClick={() => { setActiveTab('settings'); setMobileMenuOpen(false); }}
+          className="pt-4 border-t border-slate-800/80 flex items-center gap-3 px-2 cursor-pointer hover:bg-slate-800/30 p-2 rounded-lg transition"
+          title="Click to edit profile in Settings"
+        >
+          <div className="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center text-xs font-bold text-white ring-2 ring-emerald-500/20">
+            {userInitial}
+          </div>
           <div className="truncate text-xs">
-            <p className="font-semibold text-white truncate">Ellis</p>
-            <p className="text-slate-400 text-[10px] truncate">leadpulsequote.com</p>
+            <p className="font-semibold text-white truncate">{userName}</p>
+            <p className="text-slate-400 text-[10px] truncate">{userEmail}</p>
           </div>
         </div>
       </aside>
 
-      {/* Main Content Workspace */}
+      {/* Main Workspace */}
       <main className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full">
         <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-800/80 mb-8">
           <div>
             <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">OVERVIEW</p>
             <h2 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight mt-1">
-              {activeTab === 'dashboard' && 'Good day, Ellis.'}
+              {activeTab === 'dashboard' && `Good day, ${userName.split(' ')[0]}.`}
               {activeTab === 'pipeline' && 'Leads Pipeline'}
               {activeTab === 'quotes' && 'Quotation Builder'}
               {activeTab === 'clients' && 'Clients Directory'}
-              {activeTab === 'settings' && 'Workspace Settings'}
+              {activeTab === 'settings' && 'Workspace & Account Settings'}
             </h2>
             <p className="text-xs text-slate-400 mt-1">
               {activeTab === 'dashboard' && "Here's what's moving in your pipeline today."}
               {activeTab === 'pipeline' && 'Monitor and move opportunities through your active pipeline.'}
               {activeTab === 'quotes' && 'Generate proposals, manage retainers, and track client delivery.'}
               {activeTab === 'clients' && 'Directory of all active customer contacts.'}
-              {activeTab === 'settings' && 'Workspace parameters and production deployment details.'}
+              {activeTab === 'settings' && 'Manage your account name, contact email, and platform preferences.'}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -453,7 +474,7 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 4: CLIENTS (DYNAMIC DIRECTORY + ADD CLIENT MODAL) */}
+        {/* TAB 4: CLIENTS */}
         {activeTab === 'clients' && (
           <div className="bg-[#0f172a] border border-slate-800 rounded-xl p-5">
             <div className="flex justify-between items-center mb-4">
@@ -482,15 +503,61 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 5: SETTINGS */}
+        {/* TAB 5: SETTINGS (EDITABLE NAME & EMAIL) */}
         {activeTab === 'settings' && (
-          <div className="bg-[#0f172a] border border-slate-800 rounded-xl p-5 max-w-xl space-y-3 text-xs">
-            <h3 className="font-bold text-sm text-white mb-3">Settings & Deployment</h3>
-            <p><span className="text-slate-400">Custom Domain:</span> leadpulsequote.com</p>
-            <p><span className="text-slate-400">Admin Account:</span> Ellis</p>
-            <p><span className="text-slate-400">Storage Engine:</span> Browser LocalStorage (`quotient_clients`, `quotient_leads`, `quotient_quotes`)</p>
-            <button onClick={() => { localStorage.clear(); location.reload(); }} className="mt-4 px-3 py-1.5 bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded font-medium hover:bg-rose-500/30 transition">
-              Reset Demo Data
+          <div className="bg-[#0f172a] border border-slate-800 rounded-xl p-5 max-w-xl space-y-5 text-xs">
+            <div>
+              <h3 className="font-bold text-sm text-white">Account & Profile Settings</h3>
+              <p className="text-slate-400 text-[11px] mt-0.5">Customize your name and email address. These details appear across your quotations, client links, and dashboard.</p>
+            </div>
+
+            <form onSubmit={handleSaveProfile} className="space-y-3 p-4 bg-slate-800/50 rounded-xl border border-slate-700/60">
+              <div>
+                <label className="text-slate-300 font-semibold block mb-1">Your Full Name</label>
+                <input
+                  type="text"
+                  required
+                  value={userName}
+                  onChange={e => setUserName(e.target.value)}
+                  placeholder="e.g. Sanajit Dey"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-300 font-semibold block mb-1">Sender Email / Handle</label>
+                <input
+                  type="email"
+                  required
+                  value={userEmail}
+                  onChange={e => setUserEmail(e.target.value)}
+                  placeholder="you@yourdomain.com"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-between pt-2">
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-lg transition flex items-center gap-1.5"
+                >
+                  <i className="fa-solid fa-floppy-disk"></i> Save Profile
+                </button>
+                {profileSavedToast && (
+                  <span className="text-emerald-400 font-medium text-xs flex items-center gap-1">
+                    <i className="fa-solid fa-check"></i> Profile updated!
+                  </span>
+                )}
+              </div>
+            </form>
+
+            <div className="space-y-2 pt-2 border-t border-slate-800">
+              <p><span className="text-slate-400">Active Domain:</span> leadpulsequote.com</p>
+              <p><span className="text-slate-400">Storage Engine:</span> Browser LocalStorage (`quotient_user_name`, `quotient_user_email`)</p>
+            </div>
+
+            <button onClick={() => { localStorage.clear(); location.reload(); }} className="px-3 py-1.5 bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded font-medium hover:bg-rose-500/30 transition">
+              Reset All Demo Data
             </button>
           </div>
         )}
@@ -579,7 +646,9 @@ export default function App() {
         <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-[#0f172a] border border-slate-800 rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl">
             <h3 className="font-bold text-sm text-white">Dispatch Quotation</h3>
-            <p className="text-xs text-slate-300">Deliver proposal link and retainer agreement to <strong className="text-white">{activeQuoteModal?.recipient}</strong>?</p>
+            <p className="text-xs text-slate-300">
+              Deliver proposal link and retainer agreement from <strong className="text-emerald-400">{userEmail}</strong> to <strong className="text-white">{activeQuoteModal?.recipient}</strong>?
+            </p>
             <div className="flex justify-end gap-2 pt-2">
               <button onClick={() => setShowEmailModal(false)} className="px-3 py-1.5 bg-slate-800 text-slate-300 text-xs rounded-lg">Cancel</button>
               <button onClick={confirmSendQuote} className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-lg">Send Quote</button>
