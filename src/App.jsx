@@ -22,10 +22,13 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // User Profile State (Stored locally)
-  const [userName, setUserName] = useState(() => localStorage.getItem('quotient_user_name') || 'Sanajit Dey');
-  const [userEmail, setUserEmail] = useState(() => localStorage.getItem('quotient_user_email') || 'sancares87@gmail.com');
-  const [profileSavedToast, setProfileSavedToast] = useState(false);
+  // Corporate Brand Identity
+  const [companyName, setCompanyName] = useState(() => localStorage.getItem('lq_company_name') || 'LeadPulse Quote');
+  const [companyEmail, setCompanyEmail] = useState(() => localStorage.getItem('lq_company_email') || 'support@leadpulsequote.com');
+  const [savedToast, setSavedToast] = useState(false);
+
+  // Active Legal/Info Modal ('about', 'privacy', 'terms', or null)
+  const [legalModal, setLegalModal] = useState(null);
 
   const [clients, setClients] = useState(() => {
     const saved = localStorage.getItem('quotient_clients');
@@ -64,9 +67,9 @@ export default function App() {
   const [activeQuoteModal, setActiveQuoteModal] = useState(null);
 
   useEffect(() => {
-    localStorage.setItem('quotient_user_name', userName);
-    localStorage.setItem('quotient_user_email', userEmail);
-  }, [userName, userEmail]);
+    localStorage.setItem('lq_company_name', companyName);
+    localStorage.setItem('lq_company_email', companyEmail);
+  }, [companyName, companyEmail]);
 
   useEffect(() => {
     localStorage.setItem('quotient_clients', JSON.stringify(clients));
@@ -82,12 +85,12 @@ export default function App() {
 
   const totalValue = leads.reduce((sum, l) => l.stage !== 'Lost' ? sum + Number(l.value) : sum, 0);
 
-  const handleSaveProfile = (e) => {
+  const handleSaveSettings = (e) => {
     e.preventDefault();
-    localStorage.setItem('quotient_user_name', userName);
-    localStorage.setItem('quotient_user_email', userEmail);
-    setProfileSavedToast(true);
-    setTimeout(() => setProfileSavedToast(false), 3000);
+    localStorage.setItem('lq_company_name', companyName);
+    localStorage.setItem('lq_company_email', companyEmail);
+    setSavedToast(true);
+    setTimeout(() => setSavedToast(false), 3000);
   };
 
   const handleAddClient = (e) => {
@@ -197,16 +200,14 @@ export default function App() {
     setShowEmailModal(false);
   };
 
-  const userInitial = userName.trim() ? userName.trim().charAt(0).toUpperCase() : 'U';
-
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[#080c14] text-slate-100">
       {/* Mobile Top App Bar */}
       <header className="md:hidden flex items-center justify-between px-4 py-3 bg-[#0d1322] border-b border-slate-800 sticky top-0 z-40">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center font-bold text-white shadow-md shadow-emerald-500/20">Q</div>
+          <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center font-bold text-white shadow-md shadow-emerald-500/20">LP</div>
           <div>
-            <h1 className="font-bold text-sm tracking-tight text-white leading-none">Quotient</h1>
+            <h1 className="font-bold text-sm tracking-tight text-white leading-none">{companyName}</h1>
             <p className="text-[9px] text-slate-400 font-semibold tracking-wider uppercase mt-0.5">LEAD & QUOTES</p>
           </div>
         </div>
@@ -224,10 +225,10 @@ export default function App() {
       <aside className={`${mobileMenuOpen ? 'flex' : 'hidden'} md:flex md:w-64 bg-[#0d1322] border-r border-slate-800/80 flex-col justify-between p-4 fixed md:sticky top-0 h-full md:h-screen z-50`}>
         <div>
           <div className="hidden md:flex items-center gap-3 px-2 py-3 mb-6">
-            <div className="w-9 h-9 rounded-xl bg-emerald-500 flex items-center justify-center font-extrabold text-white text-lg shadow-lg shadow-emerald-500/25">Q</div>
+            <div className="w-9 h-9 rounded-xl bg-emerald-500 flex items-center justify-center font-extrabold text-white text-base shadow-lg shadow-emerald-500/25">LP</div>
             <div>
-              <h1 className="font-bold text-base tracking-tight text-white leading-tight">Quotient</h1>
-              <p className="text-[10px] text-slate-400 font-semibold tracking-wider uppercase">LEAD & QUOTES</p>
+              <h1 className="font-bold text-base tracking-tight text-white leading-tight">{companyName}</h1>
+              <p className="text-[10px] text-slate-400 font-semibold tracking-wider uppercase">CRM SUITE</p>
             </div>
           </div>
 
@@ -237,7 +238,7 @@ export default function App() {
               { id: 'pipeline', label: 'Leads Pipeline', icon: 'fa-diagram-project' },
               { id: 'quotes', label: 'Quotation Builder', icon: 'fa-file-invoice-dollar' },
               { id: 'clients', label: 'Clients', icon: 'fa-users' },
-              { id: 'settings', label: 'Settings', icon: 'fa-gear' }
+              { id: 'settings', label: 'Settings & Legal', icon: 'fa-gear' }
             ].map(tab => (
               <button
                 key={tab.id}
@@ -255,18 +256,24 @@ export default function App() {
           </nav>
         </div>
 
-        {/* Dynamic User Profile Footer */}
-        <div 
-          onClick={() => { setActiveTab('settings'); setMobileMenuOpen(false); }}
-          className="pt-4 border-t border-slate-800/80 flex items-center gap-3 px-2 cursor-pointer hover:bg-slate-800/30 p-2 rounded-lg transition"
-          title="Click to edit profile in Settings"
-        >
-          <div className="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center text-xs font-bold text-white ring-2 ring-emerald-500/20">
-            {userInitial}
+        {/* Corporate Identity & Legal Links */}
+        <div className="pt-4 border-t border-slate-800/80 space-y-3 px-2">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center text-xs font-bold text-white ring-2 ring-emerald-500/20">
+              <i className="fa-solid fa-building text-xs"></i>
+            </div>
+            <div className="truncate text-xs">
+              <p className="font-semibold text-white truncate">{companyName}</p>
+              <p className="text-slate-400 text-[10px] truncate">{companyEmail}</p>
+            </div>
           </div>
-          <div className="truncate text-xs">
-            <p className="font-semibold text-white truncate">{userName}</p>
-            <p className="text-slate-400 text-[10px] truncate">{userEmail}</p>
+
+          <div className="flex flex-wrap gap-2 text-[10px] text-slate-400 pt-1 border-t border-slate-800/50">
+            <button onClick={() => setLegalModal('about')} className="hover:text-emerald-400">About Us</button>
+            <span>·</span>
+            <button onClick={() => setLegalModal('privacy')} className="hover:text-emerald-400">Privacy</button>
+            <span>·</span>
+            <button onClick={() => setLegalModal('terms')} className="hover:text-emerald-400">Terms</button>
           </div>
         </div>
       </aside>
@@ -277,18 +284,18 @@ export default function App() {
           <div>
             <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">OVERVIEW</p>
             <h2 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight mt-1">
-              {activeTab === 'dashboard' && `Good day, ${userName.split(' ')[0]}.`}
+              {activeTab === 'dashboard' && `Welcome to ${companyName}`}
               {activeTab === 'pipeline' && 'Leads Pipeline'}
               {activeTab === 'quotes' && 'Quotation Builder'}
               {activeTab === 'clients' && 'Clients Directory'}
-              {activeTab === 'settings' && 'Workspace & Account Settings'}
+              {activeTab === 'settings' && 'Workspace & Organization Settings'}
             </h2>
             <p className="text-xs text-slate-400 mt-1">
-              {activeTab === 'dashboard' && "Here's what's moving in your pipeline today."}
-              {activeTab === 'pipeline' && 'Monitor and move opportunities through your active pipeline.'}
-              {activeTab === 'quotes' && 'Generate proposals, manage retainers, and track client delivery.'}
-              {activeTab === 'clients' && 'Directory of all active customer contacts.'}
-              {activeTab === 'settings' && 'Manage your account name, contact email, and platform preferences.'}
+              {activeTab === 'dashboard' && "Commercial sales funnel and pipeline distribution status."}
+              {activeTab === 'pipeline' && 'Monitor and move opportunities through active deal stages.'}
+              {activeTab === 'quotes' && 'Generate proposals, manage retainers, and dispatch client agreements.'}
+              {activeTab === 'clients' && 'Directory of all active customer accounts.'}
+              {activeTab === 'settings' && 'Platform parameters, corporate details, and compliance policies.'}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -503,35 +510,35 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 5: SETTINGS (EDITABLE NAME & EMAIL) */}
+        {/* TAB 5: SETTINGS & POLICIES */}
         {activeTab === 'settings' && (
-          <div className="bg-[#0f172a] border border-slate-800 rounded-xl p-5 max-w-xl space-y-5 text-xs">
+          <div className="bg-[#0f172a] border border-slate-800 rounded-xl p-5 max-w-xl space-y-6 text-xs">
             <div>
-              <h3 className="font-bold text-sm text-white">Account & Profile Settings</h3>
-              <p className="text-slate-400 text-[11px] mt-0.5">Customize your name and email address. These details appear across your quotations, client links, and dashboard.</p>
+              <h3 className="font-bold text-sm text-white">Company Identity & Organization</h3>
+              <p className="text-slate-400 text-[11px] mt-0.5">Corporate configuration displayed on client quotes, proposal links, and platform headers.</p>
             </div>
 
-            <form onSubmit={handleSaveProfile} className="space-y-3 p-4 bg-slate-800/50 rounded-xl border border-slate-700/60">
+            <form onSubmit={handleSaveSettings} className="space-y-3 p-4 bg-slate-800/50 rounded-xl border border-slate-700/60">
               <div>
-                <label className="text-slate-300 font-semibold block mb-1">Your Full Name</label>
+                <label className="text-slate-300 font-semibold block mb-1">Company / Platform Name</label>
                 <input
                   type="text"
                   required
-                  value={userName}
-                  onChange={e => setUserName(e.target.value)}
-                  placeholder="e.g. Sanajit Dey"
+                  value={companyName}
+                  onChange={e => setCompanyName(e.target.value)}
+                  placeholder="LeadPulse Quote"
                   className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-emerald-500"
                 />
               </div>
 
               <div>
-                <label className="text-slate-300 font-semibold block mb-1">Sender Email / Handle</label>
+                <label className="text-slate-300 font-semibold block mb-1">Official Support / Dispatch Email</label>
                 <input
                   type="email"
                   required
-                  value={userEmail}
-                  onChange={e => setUserEmail(e.target.value)}
-                  placeholder="you@yourdomain.com"
+                  value={companyEmail}
+                  onChange={e => setCompanyEmail(e.target.value)}
+                  placeholder="support@leadpulsequote.com"
                   className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-emerald-500"
                 />
               </div>
@@ -541,23 +548,49 @@ export default function App() {
                   type="submit"
                   className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-lg transition flex items-center gap-1.5"
                 >
-                  <i className="fa-solid fa-floppy-disk"></i> Save Profile
+                  <i className="fa-solid fa-floppy-disk"></i> Save Organization Details
                 </button>
-                {profileSavedToast && (
+                {savedToast && (
                   <span className="text-emerald-400 font-medium text-xs flex items-center gap-1">
-                    <i className="fa-solid fa-check"></i> Profile updated!
+                    <i className="fa-solid fa-check"></i> Organization updated!
                   </span>
                 )}
               </div>
             </form>
 
+            {/* Essential Policies & Documentation Section */}
+            <div className="space-y-3 p-4 bg-slate-800/30 rounded-xl border border-slate-800">
+              <h4 className="font-semibold text-white text-xs">Essential Company Pages & Policies</h4>
+              <p className="text-slate-400 text-[11px]">Review full public documentation and terms applicable to all client deals.</p>
+              <div className="flex flex-wrap gap-2 pt-1">
+                <button
+                  onClick={() => setLegalModal('about')}
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg border border-slate-700 text-xs font-medium transition flex items-center gap-1.5"
+                >
+                  <i className="fa-solid fa-circle-info text-blue-400"></i> About Us
+                </button>
+                <button
+                  onClick={() => setLegalModal('privacy')}
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg border border-slate-700 text-xs font-medium transition flex items-center gap-1.5"
+                >
+                  <i className="fa-solid fa-shield-halved text-emerald-400"></i> Privacy Policy
+                </button>
+                <button
+                  onClick={() => setLegalModal('terms')}
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg border border-slate-700 text-xs font-medium transition flex items-center gap-1.5"
+                >
+                  <i className="fa-solid fa-scale-balanced text-amber-400"></i> Terms & Conditions
+                </button>
+              </div>
+            </div>
+
             <div className="space-y-2 pt-2 border-t border-slate-800">
-              <p><span className="text-slate-400">Active Domain:</span> leadpulsequote.com</p>
-              <p><span className="text-slate-400">Storage Engine:</span> Browser LocalStorage (`quotient_user_name`, `quotient_user_email`)</p>
+              <p><span className="text-slate-400">Domain:</span> leadpulsequote.com</p>
+              <p><span className="text-slate-400">System Architecture:</span> Zero-Database Client Persistence (`lq_company_name`, `quotient_quotes`)</p>
             </div>
 
             <button onClick={() => { localStorage.clear(); location.reload(); }} className="px-3 py-1.5 bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded font-medium hover:bg-rose-500/30 transition">
-              Reset All Demo Data
+              Reset Demo Data
             </button>
           </div>
         )}
@@ -647,11 +680,75 @@ export default function App() {
           <div className="bg-[#0f172a] border border-slate-800 rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl">
             <h3 className="font-bold text-sm text-white">Dispatch Quotation</h3>
             <p className="text-xs text-slate-300">
-              Deliver proposal link and retainer agreement from <strong className="text-emerald-400">{userEmail}</strong> to <strong className="text-white">{activeQuoteModal?.recipient}</strong>?
+              Deliver proposal link and retainer agreement from <strong className="text-emerald-400">{companyEmail}</strong> to <strong className="text-white">{activeQuoteModal?.recipient}</strong>?
             </p>
             <div className="flex justify-end gap-2 pt-2">
               <button onClick={() => setShowEmailModal(false)} className="px-3 py-1.5 bg-slate-800 text-slate-300 text-xs rounded-lg">Cancel</button>
               <button onClick={confirmSendQuote} className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-lg">Send Quote</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 4: ABOUT US, PRIVACY POLICY, TERMS OF SERVICE */}
+      {legalModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-[#0f172a] border border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[85vh] overflow-y-auto">
+            <div className="flex justify-between items-center pb-3 border-b border-slate-800">
+              <h3 className="font-bold text-base text-white">
+                {legalModal === 'about' && `About ${companyName}`}
+                {legalModal === 'privacy' && 'Privacy Policy'}
+                {legalModal === 'terms' && 'Terms and Conditions'}
+              </h3>
+              <button onClick={() => setLegalModal(null)} className="text-slate-400 hover:text-white">
+                <i className="fa-solid fa-xmark text-lg"></i>
+              </button>
+            </div>
+
+            {legalModal === 'about' && (
+              <div className="space-y-3 text-xs text-slate-300 leading-relaxed">
+                <p><strong>{companyName}</strong> is an enterprise quotation and pipeline acceleration platform built to simplify commercial deal flow, recurring retainer management, and client onboarding.</p>
+                <p>Our infrastructure empowers modern sales organizations and consultancies to issue binding proposals, synchronize client directories, and track high-value conversion funnels with zero overhead.</p>
+                <div className="p-3 bg-slate-800/60 rounded-lg border border-slate-700/60 mt-3">
+                  <p className="font-semibold text-white">Official Contact & Inquiries</p>
+                  <p className="text-slate-400 mt-0.5">Email: {companyEmail}</p>
+                  <p className="text-slate-400">Platform: leadpulsequote.com</p>
+                </div>
+              </div>
+            )}
+
+            {legalModal === 'privacy' && (
+              <div className="space-y-3 text-xs text-slate-300 leading-relaxed">
+                <p className="text-slate-400">Last updated: 2026</p>
+                <p>At <strong>{companyName}</strong>, accessible from <strong>leadpulsequote.com</strong>, we prioritize the privacy and confidentiality of our commercial partners.</p>
+                <h4 className="font-bold text-white mt-2">1. Data Storage & Local Persistence</h4>
+                <p>This application utilizes secure, client-side browser caching (LocalStorage) to store workspace pipeline leads, quotation drafts, and directory records. Your confidential commercial rates and financial metrics remain private to your browser environment.</p>
+                <h4 className="font-bold text-white mt-2">2. Communication & Quotation Dispatches</h4>
+                <p>When sending proposals to client recipients, data is processed strictly for the purpose of agreement fulfillment and invoice generation. We never sell, lease, or monetize customer contacts.</p>
+                <h4 className="font-bold text-white mt-2">3. Contact</h4>
+                <p>For inquiries regarding our compliance or data protection policies, please reach out directly to <strong>{companyEmail}</strong>.</p>
+              </div>
+            )}
+
+            {legalModal === 'terms' && (
+              <div className="space-y-3 text-xs text-slate-300 leading-relaxed">
+                <p className="text-slate-400">Last updated: 2026</p>
+                <h4 className="font-bold text-white">1. Acceptance of Terms</h4>
+                <p>By accessing or utilizing services provided on <strong>leadpulsequote.com</strong>, you agree to comply with and be bound by these commercial operating terms.</p>
+                <h4 className="font-bold text-white mt-2">2. Commercial Quotations & Proposals</h4>
+                <p>Quotations, recurring retainer estimates, and milestone deliverables created through {companyName} represent commercial offers between the issuing entity and named clients. Final legal execution requires mutual countersignatures.</p>
+                <h4 className="font-bold text-white mt-2">3. Service Availability</h4>
+                <p>{companyName} is provided "as is" with high-availability cloud infrastructure designed for continuous uptime and verified SSL security.</p>
+              </div>
+            )}
+
+            <div className="pt-3 border-t border-slate-800 flex justify-end">
+              <button
+                onClick={() => setLegalModal(null)}
+                className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-lg transition"
+              >
+                Close Window
+              </button>
             </div>
           </div>
         </div>
