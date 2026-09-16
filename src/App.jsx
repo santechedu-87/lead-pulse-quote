@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
 
+const INITIAL_CLIENTS = [
+  { id: 'c1', name: 'Meridian Health', email: 'billing@meridianhealth.org', phone: '+1 555-0192', totalValue: 18500, type: 'Retainer' },
+  { id: 'c2', name: 'Northwind Studios', email: 'contact@northwind.io', phone: '+1 555-0144', totalValue: 96500, type: 'Deal' },
+  { id: 'c3', name: 'Apex Logistics', email: 'ops@apexlogistics.com', phone: '+1 555-0187', totalValue: 48000, type: 'Pipeline' }
+];
+
 const INITIAL_LEADS = [
   { id: '1', title: 'Warehouse Robotics Pilot', company: 'Apex Logistics', value: 48000, stage: 'New', color: 'border-l-blue-500' },
   { id: '2', title: 'Patient Intake Portal', company: 'Meridian Health', value: 18500, stage: 'Contacted', color: 'border-l-amber-500' },
   { id: '3', title: 'Enterprise Cloud Migration', company: 'Northwind Studios', value: 96500, stage: 'Proposal Sent', color: 'border-l-purple-500' },
-  { id: '4', title: 'Automated QA Rollout', company: 'CyberPeak Corp', value: 32000, stage: 'Won', color: 'border-l-emerald-500' },
-  { id: '5', title: 'Legacy Infrastructure Audit', company: 'Beacon Media', value: 7400, stage: 'Lost', color: 'border-l-rose-500' }
+  { id: '4', title: 'Automated QA Rollout', company: 'CyberPeak Corp', value: 32000, stage: 'Won', color: 'border-l-emerald-500' }
 ];
 
 const INITIAL_QUOTES = [
@@ -16,21 +21,49 @@ const INITIAL_QUOTES = [
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const [clients, setClients] = useState(() => {
+    const saved = localStorage.getItem('quotient_clients');
+    return saved ? JSON.parse(saved) : INITIAL_CLIENTS;
+  });
+
   const [leads, setLeads] = useState(() => {
     const saved = localStorage.getItem('quotient_leads');
     return saved ? JSON.parse(saved) : INITIAL_LEADS;
   });
+
   const [quotes, setQuotes] = useState(() => {
     const saved = localStorage.getItem('quotient_quotes');
     return saved ? JSON.parse(saved) : INITIAL_QUOTES;
   });
 
+  // New Client Form State
+  const [showAddClientModal, setShowAddClientModal] = useState(false);
+  const [newClientName, setNewClientName] = useState('');
+  const [newClientEmail, setNewClientEmail] = useState('');
+  const [newClientPhone, setNewClientPhone] = useState('');
+  const [newClientType, setNewClientType] = useState('Deal');
+
+  // New Lead Form State
+  const [showAddLeadModal, setShowAddLeadModal] = useState(false);
+  const [leadTitle, setLeadTitle] = useState('');
+  const [leadCompany, setLeadCompany] = useState('');
+  const [leadValue, setLeadValue] = useState('');
+  const [leadStage, setLeadStage] = useState('New');
+
+  // Quote Form State
   const [newQuoteClient, setNewQuoteClient] = useState('');
   const [newQuoteEmail, setNewQuoteEmail] = useState('');
   const [newQuoteAmount, setNewQuoteAmount] = useState('');
   const [isRetainer, setIsRetainer] = useState(true);
+
+  // Send Quote Modal
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [activeQuoteModal, setActiveQuoteModal] = useState(null);
+
+  useEffect(() => {
+    localStorage.setItem('quotient_clients', JSON.stringify(clients));
+  }, [clients]);
 
   useEffect(() => {
     localStorage.setItem('quotient_leads', JSON.stringify(leads));
@@ -42,19 +75,99 @@ export default function App() {
 
   const totalValue = leads.reduce((sum, l) => l.stage !== 'Lost' ? sum + Number(l.value) : sum, 0);
 
+  const handleAddClient = (e) => {
+    e.preventDefault();
+    if (!newClientName) return;
+    const client = {
+      id: `c_${Date.now()}`,
+      name: newClientName,
+      email: newClientEmail || 'contact@client.com',
+      phone: newClientPhone || '—',
+      totalValue: 0,
+      type: newClientType
+    };
+    setClients([client, ...clients]);
+    setNewClientName('');
+    setNewClientEmail('');
+    setNewClientPhone('');
+    setShowAddClientModal(false);
+  };
+
+  const handleAddLead = (e) => {
+    e.preventDefault();
+    if (!leadTitle || !leadCompany || !leadValue) return;
+    const stageColors = {
+      'New': 'border-l-blue-500',
+      'Contacted': 'border-l-amber-500',
+      'Proposal Sent': 'border-l-purple-500',
+      'Won': 'border-l-emerald-500',
+      'Lost': 'border-l-rose-500'
+    };
+    const lead = {
+      id: `lead_${Date.now()}`,
+      title: leadTitle,
+      company: leadCompany,
+      value: Number(leadValue),
+      stage: leadStage,
+      color: stageColors[leadStage] || 'border-l-blue-500'
+    };
+    setLeads([lead, ...leads]);
+
+    // Ensure company exists in client list
+    if (!clients.some(c => c.name.toLowerCase() === leadCompany.toLowerCase())) {
+      setClients(prev => [{
+        id: `c_${Date.now()}`,
+        name: leadCompany,
+        email: 'ops@' + leadCompany.toLowerCase().replace(/\s+/g, '') + '.com',
+        phone: '—',
+        totalValue: Number(leadValue),
+        type: 'Pipeline'
+      }, ...prev]);
+    }
+
+    setLeadTitle('');
+    setLeadCompany('');
+    setLeadValue('');
+    setShowAddLeadModal(false);
+  };
+
   const handleAddQuote = (e) => {
     e.preventDefault();
     if (!newQuoteClient || !newQuoteAmount) return;
+    const val = Number(newQuoteAmount);
     const item = {
       id: `Q-2026-00${quotes.length + 1}`,
       client: newQuoteClient,
-      recipient: newQuoteEmail || 'accounts@client.com',
-      amount: Number(newQuoteAmount),
+      recipient: newQuoteEmail || 'billing@' + newQuoteClient.toLowerCase().replace(/\s+/g, '') + '.com',
+      amount: val,
       status: 'Draft',
       date: 'Today',
       type: isRetainer ? 'Retainer' : 'Fixed'
     };
     setQuotes([item, ...quotes]);
+
+    // Auto-create client if not already present
+    if (!clients.some(c => c.name.toLowerCase() === newQuoteClient.toLowerCase())) {
+      setClients(prev => [{
+        id: `c_${Date.now()}`,
+        name: newQuoteClient,
+        email: item.recipient,
+        phone: '—',
+        totalValue: val,
+        type: isRetainer ? 'Retainer' : 'Deal'
+      }, ...prev]);
+    }
+
+    // Auto-add opportunity to pipeline under "Proposal Sent"
+    setLeads(prev => [{
+      id: `lead_${Date.now()}`,
+      title: `${newQuoteClient} ${isRetainer ? 'Retainer' : 'Contract'}`,
+      company: newQuoteClient,
+      value: val,
+      stage: 'Proposal Sent',
+      color: 'border-l-purple-500'
+    }, ...prev]);
+
     setNewQuoteClient('');
     setNewQuoteEmail('');
     setNewQuoteAmount('');
@@ -157,9 +270,21 @@ export default function App() {
               {activeTab === 'settings' && 'Workspace parameters and production deployment details.'}
             </p>
           </div>
-          <button onClick={() => setActiveTab('quotes')} className="hidden sm:flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-lg shadow-lg shadow-emerald-500/20 transition">
-            <i className="fa-solid fa-plus text-xs"></i> New Quote
-          </button>
+          <div className="flex items-center gap-2">
+            {activeTab === 'pipeline' && (
+              <button onClick={() => setShowAddLeadModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition">
+                <i className="fa-solid fa-plus text-xs"></i> Add Lead
+              </button>
+            )}
+            {activeTab === 'clients' && (
+              <button onClick={() => setShowAddClientModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-lg transition">
+                <i className="fa-solid fa-user-plus text-xs"></i> Add Client
+              </button>
+            )}
+            <button onClick={() => setActiveTab('quotes')} className="hidden sm:flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-lg shadow-lg shadow-emerald-500/20 transition">
+              <i className="fa-solid fa-plus text-xs"></i> New Quote
+            </button>
+          </div>
         </header>
 
         {/* TAB 1: DASHBOARD */}
@@ -172,7 +297,7 @@ export default function App() {
                   <i className="fa-solid fa-dollar-sign text-emerald-400"></i>
                 </div>
                 <p className="text-2xl font-black text-white mt-2">${totalValue.toLocaleString()}</p>
-                <p className="text-[11px] text-slate-400 mt-1">Across 4 open opportunities</p>
+                <p className="text-[11px] text-slate-400 mt-1">Across {leads.filter(l => l.stage !== 'Lost').length} active opportunities</p>
               </div>
 
               <div className="bg-[#0f172a] border border-slate-800 p-4 rounded-xl">
@@ -181,7 +306,7 @@ export default function App() {
                   <i className="fa-solid fa-file-invoice text-blue-400"></i>
                 </div>
                 <p className="text-2xl font-black text-white mt-2">{quotes.length}</p>
-                <p className="text-[11px] text-slate-400 mt-1">{quotes.filter(q=>q.status==='Sent').length} sent · {quotes.filter(q=>q.status==='Draft').length} draft</p>
+                <p className="text-[11px] text-slate-400 mt-1">{quotes.filter(q => q.status === 'Sent').length} sent · {quotes.filter(q => q.status === 'Draft').length} draft</p>
               </div>
 
               <div className="bg-[#0f172a] border border-slate-800 p-4 rounded-xl">
@@ -189,7 +314,11 @@ export default function App() {
                   <span>CONVERSION RATE</span>
                   <i className="fa-solid fa-arrow-trend-up text-purple-400"></i>
                 </div>
-                <p className="text-2xl font-black text-white mt-2">50%</p>
+                <p className="text-2xl font-black text-white mt-2">
+                  {leads.filter(l => l.stage === 'Won').length > 0
+                    ? Math.round((leads.filter(l => l.stage === 'Won').length / Math.max(1, leads.filter(l => ['Won', 'Lost'].includes(l.stage)).length)) * 100)
+                    : 50}%
+                </p>
                 <p className="text-[11px] text-slate-400 mt-1">Won vs. decided leads</p>
               </div>
 
@@ -198,7 +327,7 @@ export default function App() {
                   <span>CLIENTS</span>
                   <i className="fa-solid fa-users text-amber-400"></i>
                 </div>
-                <p className="text-2xl font-black text-white mt-2">3</p>
+                <p className="text-2xl font-black text-white mt-2">{clients.length}</p>
                 <p className="text-[11px] text-slate-400 mt-1">Active in directory</p>
               </div>
             </div>
@@ -230,66 +359,46 @@ export default function App() {
                         <span className="font-bold text-slate-200">${stageTotal.toLocaleString()}</span>
                       </div>
                       <div className="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden">
-                        <div className={`h-full rounded-full ${stage.color}`} style={{ width: `${Math.min((stageTotal / 100000) * 100, 100)}%` }}></div>
+                        <div className={`h-full rounded-full ${stage.color}`} style={{ width: `${Math.min((stageTotal / 150000) * 100, 100)}%` }}></div>
                       </div>
                     </div>
                   );
                 })}
               </div>
             </div>
-
-            <div className="bg-[#0f172a] border border-slate-800 rounded-xl p-5">
-              <h3 className="font-bold text-sm text-white mb-1">Activity Log</h3>
-              <p className="text-[11px] text-slate-400 mb-4">Recent events</p>
-              <ul className="space-y-3 text-xs">
-                <li className="flex items-start gap-3">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 mt-1 shrink-0"></span>
-                  <div>
-                    <p className="text-slate-200 font-medium">Quote Q-2026-001 sent to Meridian Health.</p>
-                    <p className="text-slate-500 text-[10px]">Feb 4, 2026</p>
-                  </div>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="w-2 h-2 rounded-full bg-blue-400 mt-1 shrink-0"></span>
-                  <div>
-                    <p className="text-slate-200 font-medium">New lead Warehouse Robotics Pilot added.</p>
-                    <p className="text-slate-500 text-[10px]">Feb 3, 2026</p>
-                  </div>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="w-2 h-2 rounded-full bg-purple-400 mt-1 shrink-0"></span>
-                  <div>
-                    <p className="text-slate-200 font-medium">Automated QA Rollout moved to Won.</p>
-                    <p className="text-slate-500 text-[10px]">Jan 30, 2026</p>
-                  </div>
-                </li>
-              </ul>
-            </div>
           </div>
         )}
 
         {/* TAB 2: PIPELINE */}
         {activeTab === 'pipeline' && (
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-            {['New', 'Contacted', 'Proposal Sent', 'Won', 'Lost'].map(stage => (
-              <div key={stage} className="bg-[#0f172a] border border-slate-800 rounded-xl p-3">
-                <div className="flex justify-between items-center mb-3">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{stage}</span>
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">
-                    {leads.filter(l => l.stage === stage).length}
-                  </span>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <p className="text-xs text-slate-400">{leads.length} total leads tracked</p>
+              <button onClick={() => setShowAddLeadModal(true)} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition flex items-center gap-1.5">
+                <i className="fa-solid fa-plus text-xs"></i> New Lead
+              </button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+              {['New', 'Contacted', 'Proposal Sent', 'Won', 'Lost'].map(stage => (
+                <div key={stage} className="bg-[#0f172a] border border-slate-800 rounded-xl p-3">
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{stage}</span>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">
+                      {leads.filter(l => l.stage === stage).length}
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    {leads.filter(l => l.stage === stage).map(lead => (
+                      <div key={lead.id} className={`p-3 bg-slate-800/80 rounded-lg border-l-2 ${lead.color} border-y border-r border-slate-700/60 space-y-1.5`}>
+                        <p className="text-xs font-bold text-white">{lead.title}</p>
+                        <p className="text-[11px] text-slate-400">{lead.company}</p>
+                        <p className="text-xs font-black text-emerald-400">${Number(lead.value).toLocaleString()}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  {leads.filter(l => l.stage === stage).map(lead => (
-                    <div key={lead.id} className={`p-3 bg-slate-800/80 rounded-lg border-l-2 ${lead.color} border-y border-r border-slate-700/60 space-y-1.5`}>
-                      <p className="text-xs font-bold text-white">{lead.title}</p>
-                      <p className="text-[11px] text-slate-400">{lead.company}</p>
-                      <p className="text-xs font-black text-emerald-400">${lead.value.toLocaleString()}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         )}
 
@@ -301,15 +410,15 @@ export default function App() {
               <form onSubmit={handleAddQuote} className="space-y-3 text-xs">
                 <div>
                   <label className="text-slate-400 font-medium">Client / Company Name</label>
-                  <input required type="text" value={newQuoteClient} onChange={e => setNewQuoteClient(e.target.value)} placeholder="e.g. Acme Corp" className="w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white" />
+                  <input required type="text" value={newQuoteClient} onChange={e => setNewQuoteClient(e.target.value)} placeholder="e.g. Apex Dynamics" className="w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white" />
                 </div>
                 <div>
                   <label className="text-slate-400 font-medium">Recipient Email</label>
-                  <input type="email" value={newQuoteEmail} onChange={e => setNewQuoteEmail(e.target.value)} placeholder="billing@acme.com" className="w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white" />
+                  <input type="email" value={newQuoteEmail} onChange={e => setNewQuoteEmail(e.target.value)} placeholder="finance@apexdynamics.com" className="w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white" />
                 </div>
                 <div>
                   <label className="text-slate-400 font-medium">Quote Value ($ USD)</label>
-                  <input required type="number" value={newQuoteAmount} onChange={e => setNewQuoteAmount(e.target.value)} placeholder="18500" className="w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white" />
+                  <input required type="number" value={newQuoteAmount} onChange={e => setNewQuoteAmount(e.target.value)} placeholder="25000" className="w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white" />
                 </div>
                 <div className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-lg border border-slate-700">
                   <input type="checkbox" id="ret" checked={isRetainer} onChange={e => setIsRetainer(e.target.checked)} className="w-4 h-4 text-emerald-500 rounded bg-slate-700 border-slate-600" />
@@ -332,7 +441,7 @@ export default function App() {
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${q.status === 'Sent' ? 'bg-blue-500/20 text-blue-400' : 'bg-slate-700 text-slate-300'}`}>{q.status}</span>
                     </div>
                     <div className="flex justify-between items-center pt-2 border-t border-slate-700/50">
-                      <span className="font-black text-emerald-400">${q.amount.toLocaleString()}</span>
+                      <span className="font-black text-emerald-400">${Number(q.amount).toLocaleString()}</span>
                       <button onClick={() => triggerSendQuote(q)} className="px-2.5 py-1 bg-slate-700 hover:bg-emerald-500 hover:text-white rounded text-[11px] transition">
                         <i className="fa-solid fa-paper-plane mr-1"></i> Send
                       </button>
@@ -344,23 +453,31 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 4: CLIENTS */}
+        {/* TAB 4: CLIENTS (DYNAMIC DIRECTORY + ADD CLIENT MODAL) */}
         {activeTab === 'clients' && (
           <div className="bg-[#0f172a] border border-slate-800 rounded-xl p-5">
-            <h3 className="font-bold text-sm text-white mb-4">Client Accounts</h3>
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <h3 className="font-bold text-sm text-white">Client Accounts</h3>
+                <p className="text-[11px] text-slate-400">Total {clients.length} active client profiles</p>
+              </div>
+              <button onClick={() => setShowAddClientModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-lg transition">
+                <i className="fa-solid fa-user-plus text-xs"></i> Add Client
+              </button>
+            </div>
+
             <div className="space-y-3 text-xs">
-              <div className="p-3.5 bg-slate-800/70 rounded-lg flex justify-between items-center border border-slate-700/50">
-                <div><p className="font-bold text-white text-sm">Meridian Health</p><p className="text-slate-400 text-[11px]">billing@meridianhealth.org</p></div>
-                <span className="text-emerald-400 font-bold">$18,500 Retainer</span>
-              </div>
-              <div className="p-3.5 bg-slate-800/70 rounded-lg flex justify-between items-center border border-slate-700/50">
-                <div><p className="font-bold text-white text-sm">Northwind Studios</p><p className="text-slate-400 text-[11px]">contact@northwind.io</p></div>
-                <span className="text-emerald-400 font-bold">$96,500 Deal</span>
-              </div>
-              <div className="p-3.5 bg-slate-800/70 rounded-lg flex justify-between items-center border border-slate-700/50">
-                <div><p className="font-bold text-white text-sm">Apex Logistics</p><p className="text-slate-400 text-[11px]">ops@apexlogistics.com</p></div>
-                <span className="text-slate-300 font-bold">$48,000 Pipeline</span>
-              </div>
+              {clients.map(client => (
+                <div key={client.id} className="p-3.5 bg-slate-800/70 rounded-lg flex justify-between items-center border border-slate-700/50 hover:border-slate-600 transition">
+                  <div>
+                    <p className="font-bold text-white text-sm">{client.name}</p>
+                    <p className="text-slate-400 text-[11px]">{client.email} · {client.phone}</p>
+                  </div>
+                  <span className="text-emerald-400 font-bold px-2.5 py-1 rounded bg-emerald-500/10 border border-emerald-500/20">
+                    {client.totalValue ? `$${Number(client.totalValue).toLocaleString()} ` : ''}{client.type}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -371,7 +488,7 @@ export default function App() {
             <h3 className="font-bold text-sm text-white mb-3">Settings & Deployment</h3>
             <p><span className="text-slate-400">Custom Domain:</span> leadpulsequote.com</p>
             <p><span className="text-slate-400">Admin Account:</span> Ellis</p>
-            <p><span className="text-slate-400">Storage Engine:</span> Browser LocalStorage (`quotient_leads`, `quotient_quotes`)</p>
+            <p><span className="text-slate-400">Storage Engine:</span> Browser LocalStorage (`quotient_clients`, `quotient_leads`, `quotient_quotes`)</p>
             <button onClick={() => { localStorage.clear(); location.reload(); }} className="mt-4 px-3 py-1.5 bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded font-medium hover:bg-rose-500/30 transition">
               Reset Demo Data
             </button>
@@ -379,7 +496,85 @@ export default function App() {
         )}
       </main>
 
-      {/* Dispatch Modal */}
+      {/* MODAL 1: ADD CLIENT MODAL */}
+      {showAddClientModal && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-[#0f172a] border border-slate-800 rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl">
+            <div className="flex justify-between items-center">
+              <h3 className="font-bold text-sm text-white">Add New Client</h3>
+              <button onClick={() => setShowAddClientModal(false)} className="text-slate-400 hover:text-white"><i className="fa-solid fa-xmark"></i></button>
+            </div>
+            <form onSubmit={handleAddClient} className="space-y-3 text-xs">
+              <div>
+                <label className="text-slate-400 font-medium">Company / Client Name</label>
+                <input required type="text" value={newClientName} onChange={e => setNewClientName(e.target.value)} placeholder="e.g. Apex Global" className="w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg p-2 text-white" />
+              </div>
+              <div>
+                <label className="text-slate-400 font-medium">Email Address</label>
+                <input type="email" value={newClientEmail} onChange={e => setNewClientEmail(e.target.value)} placeholder="contact@apexglobal.com" className="w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg p-2 text-white" />
+              </div>
+              <div>
+                <label className="text-slate-400 font-medium">Phone</label>
+                <input type="text" value={newClientPhone} onChange={e => setNewClientPhone(e.target.value)} placeholder="+1 555-0100" className="w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg p-2 text-white" />
+              </div>
+              <div>
+                <label className="text-slate-400 font-medium">Account Relationship</label>
+                <select value={newClientType} onChange={e => setNewClientType(e.target.value)} className="w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg p-2 text-white">
+                  <option value="Deal">Active Deal</option>
+                  <option value="Retainer">Monthly Retainer</option>
+                  <option value="Pipeline">Pipeline Prospect</option>
+                </select>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button type="button" onClick={() => setShowAddClientModal(false)} className="px-3 py-1.5 bg-slate-800 text-slate-300 text-xs rounded-lg">Cancel</button>
+                <button type="submit" className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-lg">Save Client</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2: ADD LEAD MODAL */}
+      {showAddLeadModal && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-[#0f172a] border border-slate-800 rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl">
+            <div className="flex justify-between items-center">
+              <h3 className="font-bold text-sm text-white">Add Pipeline Lead</h3>
+              <button onClick={() => setShowAddLeadModal(false)} className="text-slate-400 hover:text-white"><i className="fa-solid fa-xmark"></i></button>
+            </div>
+            <form onSubmit={handleAddLead} className="space-y-3 text-xs">
+              <div>
+                <label className="text-slate-400 font-medium">Opportunity Title</label>
+                <input required type="text" value={leadTitle} onChange={e => setLeadTitle(e.target.value)} placeholder="e.g. ERP Migration" className="w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg p-2 text-white" />
+              </div>
+              <div>
+                <label className="text-slate-400 font-medium">Company Name</label>
+                <input required type="text" value={leadCompany} onChange={e => setLeadCompany(e.target.value)} placeholder="e.g. Apex Logistics" className="w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg p-2 text-white" />
+              </div>
+              <div>
+                <label className="text-slate-400 font-medium">Estimated Value ($ USD)</label>
+                <input required type="number" value={leadValue} onChange={e => setLeadValue(e.target.value)} placeholder="35000" className="w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg p-2 text-white" />
+              </div>
+              <div>
+                <label className="text-slate-400 font-medium">Pipeline Stage</label>
+                <select value={leadStage} onChange={e => setLeadStage(e.target.value)} className="w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg p-2 text-white">
+                  <option value="New">New</option>
+                  <option value="Contacted">Contacted</option>
+                  <option value="Proposal Sent">Proposal Sent</option>
+                  <option value="Won">Won</option>
+                  <option value="Lost">Lost</option>
+                </select>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button type="button" onClick={() => setShowAddLeadModal(false)} className="px-3 py-1.5 bg-slate-800 text-slate-300 text-xs rounded-lg">Cancel</button>
+                <button type="submit" className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg">Add to Funnel</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 3: DISPATCH MODAL */}
       {showEmailModal && (
         <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-[#0f172a] border border-slate-800 rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl">
